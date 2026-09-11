@@ -13,8 +13,11 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Install net-tools (provides netstat) and psmisc (provides killall)
-      run: sudo apt-get update -qq && sudo apt-get install -y net-tools psmisc
+    - name: Install build and test dependencies
+      run: sudo apt-get update -qq && sudo apt-get install -y build-essential curl net-tools psmisc python3 python-is-python3
+    - name: Proxy regression tests
+      run: make && python3 tests/proxy_regression.py
+      timeout-minutes: 2
     - name: Basic-1
       id: basic-1
       uses: classroom-resources/autograding-command-grader@v1
