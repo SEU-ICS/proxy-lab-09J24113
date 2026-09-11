@@ -1,4 +1,3 @@
-/* Concurrent HTTP/1.0 proxy with a bounded, shared-reader LRU cache. */
 #include "csapp.h"
 #include <strings.h>
 #include <stdint.h>
@@ -25,9 +24,7 @@ static size_t cache_used;
 static pthread_rwlock_t cache_lock = PTHREAD_RWLOCK_INITIALIZER;
 static atomic_ulong cache_clock;
 
-/* Readers copy concurrently. Atomic timestamps avoid upgrading the read lock.
- * The copy remains valid after releasing the lock, even if the entry is evicted.
- * No lock is held while writing to a potentially slow client. */
+
 static size_t cache_lookup(const char *uri, char *out)
 {
     size_t size = 0;
@@ -127,7 +124,6 @@ static int append_text(char *dst, size_t capacity, const char *src)
     return 1;
 }
 
-/* Return a validated header value, trimming outer whitespace in place. */
 static char *header_value(char *line)
 {
     char *colon = strchr(line, ':');
@@ -160,7 +156,8 @@ static int parse_length(const char *value, size_t *length)
     return 1;
 }
 
-/* Separate the URI authority from its path/query, including bracketed IPv6. */
+
+
 static int parse_uri(const char *uri, char *host, char *port,
                      char *path, char *authority)
 {
@@ -204,7 +201,7 @@ static int parse_uri(const char *uri, char *host, char *port,
     return n >= 0 && n < MAXLINE;
 }
 
-/* Accumulate actual bytes, discarding the candidate once it exceeds the limit. */
+
 static int relay(int fd, const char *data, size_t size, char *object,
                  size_t *used, int *cacheable)
 {
@@ -256,7 +253,7 @@ static void forward_response(int connfd, rio_t *server, const char *uri)
         }
         if (!relay(connfd, line, (size_t)n, object, &used, &cacheable)) goto done;
     }
-    /* A 204 or 304 response has no message body. */
+    
     if (status == 204 || status == 304) goto done;
     if (transfer_encoding) has_length = 0;
     for (;;) {
@@ -345,7 +342,6 @@ static void handle_request(int connfd)
             if (!append_text(headers, sizeof(headers), line)) goto too_large;
         }
     }
-    /* A differing virtual Host must not share another Host's cached response. */
     char cache_key[MAXLINE * 2 + 2];
     snprintf(cache_key, sizeof(cache_key), "%s\n%s", uri,
              *host_header ? host_header : authority);
@@ -420,7 +416,7 @@ int main(int argc, char **argv)
         int fd = accept(listenfd, NULL, NULL);
         if (fd < 0) {
             if (errno == EINTR || errno == ECONNABORTED) continue;
-            /* Back off on resource exhaustion without killing active clients. */
+
             sleep(1);
             continue;
         }
